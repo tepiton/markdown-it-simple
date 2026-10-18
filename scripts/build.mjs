@@ -40,11 +40,8 @@ const fill = (content, fm, rel) =>
     return String(fmtDate(value));
   });
 
-// Output name for a Markdown file: foo.md -> foo.html, README.md -> index.html.
-const htmlName = (file) => {
-  const base = file.replace(MD_EXT, "");
-  return (base.toLowerCase() === "readme" ? "index" : base) + ".html";
-};
+// Output name for a Markdown file: foo.md -> foo.html.
+const htmlName = (file) => file.replace(MD_EXT, ".html");
 
 const md = new MarkdownIt({ html: true, linkify: true });
 md.use(anchor, {
@@ -161,7 +158,7 @@ async function main() {
   // Ensure a root index exists.
   const indexPath = path.join(OUT_DIR, "index.html");
   if (!(await fs.stat(indexPath).catch(() => null))) {
-    console.log("No index.md/README.md at root; generating page list.");
+    console.log("No index.md at root; generating page list.");
     const pages = [];
     for await (const f of walk(OUT_DIR)) if (f.endsWith(".html")) pages.push(path.relative(OUT_DIR, f).split(path.sep).join("/"));
     const list = pages.sort().map((p) => `<li><a href="${p}">${escapeHtml(p)}</a></li>`).join("\n");

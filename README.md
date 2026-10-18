@@ -56,7 +56,9 @@ doesn't need it, but it stops GitHub Pages from running Jekyll if
 
 ### Details
 
-- `README.md` in any directory becomes `index.html`.
+- Every Markdown file keeps its name: `notes.md` becomes `notes.html`,
+  and `README.md` becomes `README.html`. Use `index.md` for a
+  directory's landing page.
 - Relative links to Markdown files are rewritten to point at the HTML:
   `[Dewey](../dewey/index.md)` links to `../dewey/index.html`.
 - Headings get GitHub-style `id` slugs, so `## First Section` can be
@@ -64,7 +66,7 @@ doesn't need it, but it stops GitHub Pages from running Jekyll if
 - A page with two or more `##` or `###` headings gets a table of contents
   at the top.
 - Raw HTML in Markdown is passed through, and bare URLs are turned into links.
-- If `public/` has no root `index.md` or `README.md`, the build generates
+- If `public/` has no root `index.md`, the build generates
   an index page that lists every page.
 
 ## Front matter
