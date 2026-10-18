@@ -8,6 +8,14 @@ description: "A simple mimeo template"
 
 A short opening passage or epigraph. Replace this with your own framing, dedication, or introductory note.
 
+[hughie](./hughie/)
+
+[dewey](./dewey)
+
+[louie](./louie/)
+
+
+
 > The beginning is always today.
 
 ## First Section
