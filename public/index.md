@@ -10,6 +10,8 @@ Dedicated to Uncle Donald, who has survived three nephews, one rich uncle,
 and an uncountable number of exploding hammocks. Replace this with your own
 dedication, or keep it. He has earned it.
 
+*Compiled on {{date}} by {{author}}.*
+
 [Hughie](./hughie/) · [Dewey](./dewey/) · [Louie](./louie/)
 
 > "Work smarter, not harder. And if that fails, check the Guidebook."

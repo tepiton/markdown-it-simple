@@ -3,7 +3,6 @@
 // markdown-it, preserving subdirectory structure and copying other assets.
 import fs from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import MarkdownIt from "markdown-it";
 import anchor from "markdown-it-anchor";
 import matter from "gray-matter";
@@ -11,8 +10,10 @@ import matter from "gray-matter";
 const SRC_DIR = path.resolve(process.env.SRC_DIR ?? "public");
 const OUT_DIR = path.resolve(process.env.OUT_DIR ?? "_site");
 const SITE_TITLE = process.env.SITE_TITLE ?? "Documentation";
-const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
-const CSS_SRC = process.env.CSS_SRC ?? path.join(SCRIPT_DIR, "style.css");
+// The stylesheet normally lives in SRC_DIR at assets/style.css; CSS_SRC, if
+// set, replaces it (useful when SRC_DIR points at a folder without one).
+const CSS_PATH = path.join("assets", "style.css");
+const CSS_SRC = process.env.CSS_SRC && path.resolve(process.env.CSS_SRC);
 const MD_EXT = /\.(md|markdown)$/i;
 
 const escapeHtml = (s) =>
@@ -22,6 +23,22 @@ const escapeHtml = (s) =>
 // GitHub-style heading slugs.
 const slugify = (s) =>
   s.trim().toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, "").replace(/\s+/g, "-");
+
+// YAML dates come back from gray-matter as Date objects; print them as YYYY-MM-DD.
+const fmtDate = (v) => (v instanceof Date ? v.toISOString().slice(0, 10) : v);
+
+// Poor man's mustache: replace {{key}} (or {{a.b}}) with the front-matter
+// value. \{{key}} yields a literal {{key}}; unknown keys are left in place.
+const fill = (content, fm, rel) =>
+  content.replace(/(\\?)\{\{\s*([\w.]+)\s*\}\}/g, (match, esc, key) => {
+    if (esc) return match.slice(1);
+    const value = key.split(".").reduce((o, k) => o?.[k], fm);
+    if (value == null) {
+      console.warn(`  warning: ${rel}: no front-matter value for {{${key}}}`);
+      return match;
+    }
+    return String(fmtDate(value));
+  });
 
 // Output name for a Markdown file: foo.md -> foo.html, README.md -> index.html.
 const htmlName = (file) => {
@@ -66,7 +83,7 @@ function page({ title, fm, body, toc, root }) {
   const header = fm.title
     ? `<header id="title-block-header">
 <h1 class="title">${escapeHtml(fm.title)}</h1>
-${fm.subtitle ? `<p class="subtitle">${escapeHtml(fm.subtitle)}</p>\n` : ""}${fm.author ? `<p class="author">${escapeHtml(fm.author)}</p>\n` : ""}${fm.date ? `<p class="date">${escapeHtml(fm.date instanceof Date ? fm.date.toISOString().slice(0, 10) : fm.date)}</p>\n` : ""}</header>\n`
+${fm.subtitle ? `<p class="subtitle">${escapeHtml(fm.subtitle)}</p>\n` : ""}${fm.author ? `<p class="author">${escapeHtml(fm.author)}</p>\n` : ""}${fm.date ? `<p class="date">${escapeHtml(fmtDate(fm.date))}</p>\n` : ""}</header>\n`
     : "";
   return `<!DOCTYPE html>
 <html lang="${escapeHtml(fm.lang ?? "en")}">
@@ -96,8 +113,7 @@ async function main() {
     process.exit(1);
   });
   await fs.rm(OUT_DIR, { recursive: true, force: true });
-  await fs.mkdir(path.join(OUT_DIR, "assets"), { recursive: true });
-  await fs.copyFile(CSS_SRC, path.join(OUT_DIR, "assets", "style.css"));
+  await fs.mkdir(OUT_DIR, { recursive: true });
   await fs.writeFile(path.join(OUT_DIR, ".nojekyll"), "");
 
   const files = [];
@@ -118,7 +134,7 @@ async function main() {
 
     const { data: fm, content } = matter(await fs.readFile(src, "utf8"));
     md._headings = [];
-    const body = md.render(content);
+    const body = md.render(fill(content, fm, rel));
     const headings = md._headings;
     const h1 = headings.find((h) => h.level === 1);
     const title = fm.title ?? h1?.title ?? path.basename(rel).replace(MD_EXT, "");
@@ -130,6 +146,16 @@ async function main() {
     await fs.writeFile(dest, page({ title, fm, body, toc: renderToc(headings), root }));
     console.log(`  ${rel} -> ${outRel}`);
     count++;
+  }
+
+  // Copied after the content so an explicit CSS_SRC wins.
+  const cssDest = path.join(OUT_DIR, CSS_PATH);
+  if (CSS_SRC) {
+    await fs.mkdir(path.dirname(cssDest), { recursive: true });
+    await fs.copyFile(CSS_SRC, cssDest);
+  }
+  if (!(await fs.stat(cssDest).catch(() => null))) {
+    console.warn(`  warning: no ${CSS_PATH} in ${SRC_DIR} and CSS_SRC not set; pages will be unstyled`);
   }
 
   // Ensure a root index exists.
